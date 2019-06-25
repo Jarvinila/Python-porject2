@@ -1,0 +1,66 @@
+def dec(value):
+    return "{:.0f}".format(value)
+
+import requests
+from bs4 import BeautifulSoup
+file = requests.get(f"https://www.infrontanalytics.com/fe-en/US5801351017/McDonald-s-Corporation/beta")
+html = BeautifulSoup(file.text, "html.parser")
+thead = html.findAll("td")
+Beta = thead[8].text
+
+import xlwings as xw
+wb = xw.Book(r"C:/Users/asus1/Desktop/Python_Final_Project.xlsx")
+Mc_sheet = wb.sheets["Mc_Donalds"]
+Mc_sheet.cells(27, 2).value = Beta 
+Re = Mc_sheet.cells(25, 2).value + Mc_sheet.cells(27, 2).value * (Mc_sheet.cells(26, 2).value)
+Mc_sheet.cells(28, 2).value = "{:.2f}".format(Re)
+Mc_sheet.cells(20, 2).value = Mc_sheet.cells(28, 2).value
+WACC = (Mc_sheet.cells(18, 2).value / (Mc_sheet.cells(18, 2).value + Mc_sheet.cells(17, 2).value)) * Mc_sheet.cells(20, 2).value + (Mc_sheet.cells(17, 2).value / (Mc_sheet.cells(18, 2).value + Mc_sheet.cells(17, 2).value)) * Mc_sheet.cells(19, 2).value * (Mc_sheet.cells(2, 5).value - Mc_sheet.cells(21, 2).value) 
+Mc_sheet.cells(22, 2).value = "{:.2f}".format(WACC)
+
+Projects = [1, 2]
+for Project in Projects:
+    sheet = wb.sheets["Project{}".format(Project)]
+    num_of_columns = sheet.api.Cells.Find(What="*",
+                      After=sheet.api.Cells(1, 1),
+                      LookAt=xw.constants.LookAt.xlPart,
+                      LookIn=xw.constants.FindLookIn.xlFormulas,
+                      SearchOrder=xw.constants.SearchOrder.xlByColumns,
+                      SearchDirection=xw.constants.SearchDirection.xlPrevious,
+                      MatchCase=False)
+   
+    NPV = -(sheet.cells(3, 4).value)
+    for i in range(1, num_of_columns.Column-3):
+        depreciation = sheet.cells(3, 4).value / 3
+        sheet.cells(6, i+4).value = dec(depreciation)
+        sheet.cells(10, i+4).value = dec(depreciation)
+        Profit_before_tax = sheet.cells(4, i+4).value - sheet.cells(5, i+4).value - sheet.cells(6, i+4).value
+        sheet.cells(7, i+4).value = dec(Profit_before_tax)
+        Tax = sheet.cells(7, i+4).value * sheet.cells(8, 3).value
+        sheet.cells(8, i+4).value = dec(Tax)
+        Profit_after_tax = sheet.cells(7, i+4).value - sheet.cells(8, i+4).value
+        sheet.cells(9, i+4).value = dec(Profit_after_tax)
+        Cash_flow = sheet.cells(9, i+4).value + sheet.cells(10, i+4).value
+        sheet.cells(11, i+4).value = dec(Cash_flow)
+        sheet.cells(1, i+4).value = i
+        sheet.cells(1, i+4).color = (255, 135, 0) #橘色
+        NPV = NPV + sheet.cells(11, i+4).value / (sheet.cells(1, 5).value + sheet.cells(13, 5).value)**sheet.cells(1, i+4).value
+        sheet.cells(12, 5).value = dec(NPV)
+
+P1_sheet = wb.sheets["Project1"]
+P1_NPV = P1_sheet.cells(12, 5).value
+P2_sheet = wb.sheets["Project2"]
+P2_NPV = P2_sheet.cells(12, 5).value
+
+if P1_NPV > P2_NPV:
+    Mc_sheet.cells(35, 1).value = "Mc Donald's should invest in Project1."
+    for j in range(1,9):
+        Mc_sheet.cells(35, j).color = (255, 0, 0) #紅色    
+elif P1_NPV < P2_NPV:
+    Mc_sheet.cells(35, 1).value = "Mc Donald's should invest in Project2."
+    for j in range(1,9):
+        Mc_sheet.cells(35, j).color = (120, 200, 0) #草綠色
+else:
+    Mc_sheet.cells(35, 1).value = "Mc Donald's can safely invest in either of the two projects."
+    for j in range(1,9):
+        Mc_sheet.cells(35, j).color = (255, 255, 0) #黃色
